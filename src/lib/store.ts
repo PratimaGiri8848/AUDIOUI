@@ -8,19 +8,78 @@ interface User {
   name: string;
 }
 
+interface Settings {
+  general: {
+    sessionization: boolean;
+    autoconvert: boolean;
+  };
+  voice: {
+    autoselectVoice: boolean;
+    voiceProvider: string;
+    language: string;
+    gender: string;
+    defaultVoice: string;
+    defaultModel: string;
+  };
+  player: {
+    smallPlayer: boolean;
+    volumeControl: boolean;
+    rewindForward: boolean;
+    speedControl: boolean;
+    textColor: string;
+    bgColor: string;
+  };
+  websites: {
+    allowedUrls: string[];
+    disallowedWords: string[];
+    disallowedUrls: string[];
+  };
+}
+
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+  settings: Settings;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
+  updateSettings: (settings: Partial<Settings>) => Promise<void>;
 }
+
+const defaultSettings: Settings = {
+  general: {
+    sessionization: false,
+    autoconvert: true,
+  },
+  voice: {
+    autoselectVoice: true,
+    voiceProvider: "11Labs",
+    language: "English",
+    gender: "Male",
+    defaultVoice: "Rachel",
+    defaultModel: "Eleven Multilingual v2",
+  },
+  player: {
+    smallPlayer: true,
+    volumeControl: true,
+    rewindForward: true,
+    speedControl: true,
+    textColor: "#2134c2ff",
+    bgColor: "#000000ff",
+  },
+  websites: {
+    allowedUrls: ["https://elevenlabs.io/blog/"],
+    disallowedWords: ["admin", "login"],
+    disallowedUrls: [],
+  },
+};
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
+      settings: defaultSettings,
 
       signIn: async (email: string, password: string) => {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -33,6 +92,13 @@ export const useAuthStore = create<AuthState>()(
         }
 
         if (data.user) {
+          // Fetch user settings
+          const { data: settingsData, error: settingsError } = await supabase
+            .from('user_settings')
+            .select('settings')
+            .eq('user_id', data.user.id)
+            .single();
+
           set({
             user: {
               id: data.user.id,
@@ -40,6 +106,7 @@ export const useAuthStore = create<AuthState>()(
               name: data.user.user_metadata.name || email.split('@')[0],
             },
             isAuthenticated: true,
+            settings: settingsData?.settings || defaultSettings,
           });
         }
       },
@@ -60,6 +127,16 @@ export const useAuthStore = create<AuthState>()(
         }
 
         if (data.user) {
+          // Create initial settings
+          const { error: settingsError } = await supabase
+            .from('user_settings')
+            .insert([
+              {
+                user_id: data.user.id,
+                settings: defaultSettings,
+              },
+            ]);
+
           set({
             user: {
               id: data.user.id,
@@ -67,6 +144,7 @@ export const useAuthStore = create<AuthState>()(
               name: name,
             },
             isAuthenticated: true,
+            settings: defaultSettings,
           });
         }
       },
@@ -78,7 +156,30 @@ export const useAuthStore = create<AuthState>()(
           throw new Error(error.message);
         }
 
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false, settings: defaultSettings });
+      },
+
+      updateSettings: async (newSettings: Partial<Settings>) => {
+        const state = get();
+        if (!state.user) return;
+
+        const updatedSettings = {
+          ...state.settings,
+          ...newSettings,
+        };
+
+        const { error } = await supabase
+          .from('user_settings')
+          .upsert({
+            user_id: state.user.id,
+            settings: updatedSettings,
+          });
+
+        if (error) {
+          throw new Error('Failed to save settings');
+        }
+
+        set({ settings: updatedSettings });
       },
     }),
     {

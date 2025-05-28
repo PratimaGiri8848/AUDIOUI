@@ -2,13 +2,17 @@ import React, { useState } from 'react';
 import { Switch } from '../../ui/Switch';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/Card';
 import { Button } from '../../ui/Button';
-import { Copy, Check, ChevronDown } from 'lucide-react';
+import { Copy, Check, ChevronDown, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuthStore } from '../../../lib/store';
 
 const GeneralTab: React.FC = () => {
-  const [isEnabled, setIsEnabled] = useState(true);
+  const { settings, updateSettings } = useAuthStore();
+  const [isEnabled, setIsEnabled] = useState(settings.general.sessionization);
+  const [autoconvert, setAutoconvert] = useState(settings.general.autoconvert);
   const [isCopied, setIsCopied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   const iframeCode = `<iframe id="AudioNativeElevenLabsPlayer" width="100%" height="90" frameBorder="no" scrolling="no" src="https://elevenlabs.io/player/index.html?publicUserId=bd605a946c64ae91a6a1969195878d2d89bd42426c8eaca664d92e5d8178&small=true&textColor=rgba(33, 52, 52, 194, 1)&backgroundColor=rgba(255, 25, 25, 255, 1)"></iframe>
 <script src="https://elevenlabs.io/player/audioNativeHelper.js" type="text/javascript"></script>`;
@@ -19,9 +23,40 @@ const GeneralTab: React.FC = () => {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateSettings({
+        general: {
+          sessionization: isEnabled,
+          autoconvert: autoconvert,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold mb-4">General Settings</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold">General Settings</h2>
+        <Button 
+          onClick={handleSave} 
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save Changes'
+          )}
+        </Button>
+      </div>
       
       <div className="flex items-center justify-between">
         <div className="space-y-1">
@@ -34,6 +69,20 @@ const GeneralTab: React.FC = () => {
           checked={isEnabled} 
           onCheckedChange={setIsEnabled} 
           aria-label="Toggle Audio Native"
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <p className="font-medium">Autoconvert project to audio</p>
+          <p className="text-sm text-muted-foreground">
+            Automatically convert new content to audio
+          </p>
+        </div>
+        <Switch 
+          checked={autoconvert} 
+          onCheckedChange={setAutoconvert} 
+          aria-label="Toggle Autoconvert"
         />
       </div>
       
