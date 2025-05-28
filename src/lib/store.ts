@@ -6,6 +6,7 @@ interface User {
   id: string;
   email: string;
   name: string;
+  emailConfirmed?: boolean;
 }
 
 interface Settings {
@@ -44,6 +45,7 @@ interface AuthState {
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateSettings: (settings: Partial<Settings>) => Promise<void>;
+  resendConfirmationEmail: (email: string) => Promise<void>;
 }
 
 const defaultSettings: Settings = {
@@ -91,6 +93,10 @@ export const useAuthStore = create<AuthState>()(
           throw new Error(error.message);
         }
 
+        if (!data.user?.email_confirmed_at) {
+          throw new Error('Please confirm your email address before signing in');
+        }
+
         if (data.user) {
           // Fetch user settings
           const { data: settingsData, error: settingsError } = await supabase
@@ -104,6 +110,7 @@ export const useAuthStore = create<AuthState>()(
               id: data.user.id,
               email: data.user.email!,
               name: data.user.user_metadata.name || email.split('@')[0],
+              emailConfirmed: !!data.user.email_confirmed_at,
             },
             isAuthenticated: true,
             settings: settingsData?.settings || defaultSettings,
@@ -119,6 +126,7 @@ export const useAuthStore = create<AuthState>()(
             data: {
               name,
             },
+            emailRedirectTo: `${window.location.origin}/signin`,
           },
         });
 
@@ -127,25 +135,7 @@ export const useAuthStore = create<AuthState>()(
         }
 
         if (data.user) {
-          // Create initial settings
-          const { error: settingsError } = await supabase
-            .from('user_settings')
-            .insert([
-              {
-                user_id: data.user.id,
-                settings: defaultSettings,
-              },
-            ]);
-
-          set({
-            user: {
-              id: data.user.id,
-              email: data.user.email!,
-              name: name,
-            },
-            isAuthenticated: true,
-            settings: defaultSettings,
-          });
+          throw new Error('Please check your email to confirm your account before signing in');
         }
       },
 
@@ -180,6 +170,17 @@ export const useAuthStore = create<AuthState>()(
         }
 
         set({ settings: updatedSettings });
+      },
+
+      resendConfirmationEmail: async (email: string) => {
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email,
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
       },
     }),
     {
