@@ -11,22 +11,18 @@ import { motion } from 'framer-motion';
 const Dashboard: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const currentTab = new URLSearchParams(location.search).get('tab') || 'dashboard';
+  const currentTab = new URLSearchParams(location.search).get('tab') || 'general';
 
   useEffect(() => {
     // Validate tab parameter
-    const validTabs = ['dashboard', 'general', 'websites', 'player', 'history'];
+    const validTabs = ['general', 'websites', 'player', 'history'];
     if (!validTabs.includes(currentTab)) {
-      navigate('/dashboard', { replace: true });
+      navigate('/dashboard?tab=general', { replace: true });
     }
   }, [currentTab, navigate]);
 
   const handleTabChange = (value: string) => {
-    if (value === 'dashboard') {
-      navigate('/dashboard');
-    } else {
-      navigate(`/dashboard?tab=${value}`);
-    }
+    navigate(`/dashboard?tab=${value}`);
   };
 
   return (
@@ -36,7 +32,7 @@ const Dashboard: React.FC = () => {
           <button className="mr-2 text-muted-foreground hover:text-foreground transition-colors">
             <ChevronLeft size={20} />
           </button>
-          <h1 className="text-xl font-semibold">Dashboard Settings</h1>
+          <h1 className="text-xl font-semibold">Settings</h1>
         </div>
         
         <Tabs 
@@ -45,8 +41,7 @@ const Dashboard: React.FC = () => {
           className="w-full"
         >
           <div className="hidden md:block">
-            <TabsList className="grid grid-cols-5 max-w-3xl mx-auto my-4">
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsList className="grid grid-cols-4 max-w-3xl mx-auto my-4">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="websites">My Websites</TabsTrigger>
               <TabsTrigger value="player">Player Settings</TabsTrigger>
@@ -61,10 +56,6 @@ const Dashboard: React.FC = () => {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            <TabsContent value="dashboard" className="p-4">
-              <h2>Dashboard Overview</h2>
-            </TabsContent>
-            
             <TabsContent value="general" className="p-4">
               <GeneralTab />
             </TabsContent>
