@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/Card';
 import { Github, Mail } from 'lucide-react';
+import { useAuthStore } from '../../lib/store';
 
 const SignIn = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const signIn = useAuthStore((state) => state.signIn);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,8 +19,8 @@ const SignIn = () => {
     setError('');
 
     try {
-      // Implement authentication logic here
-      console.log('Signing in with:', { email, password });
+      await signIn(email, password);
+      navigate('/dashboard?tab=general');
     } catch (err) {
       setError('Invalid email or password');
     } finally {

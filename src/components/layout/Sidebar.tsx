@@ -6,6 +6,7 @@ import {
   Settings, History, Globe, Music, 
   LogOut, User, Sun, Moon, X
 } from 'lucide-react';
+import { useAuthStore } from '../../lib/store';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -40,6 +41,8 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const signOut = useAuthStore((state) => state.signOut);
+  const user = useAuthStore((state) => state.user);
 
   const currentTab = new URLSearchParams(location.search).get('tab') || 'general';
 
@@ -49,6 +52,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   };
 
   const handleLogout = () => {
+    signOut();
     navigate('/signin');
     onClose();
   };
@@ -124,11 +128,11 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         <div className="absolute bottom-0 w-full p-4 border-t border-border">
           <div className="flex items-center space-x-3 mb-3">
             <div className="flex-shrink-0 w-10 h-10 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-medium">
-              SM
+              {user?.name?.substring(0, 2).toUpperCase() || 'AN'}
             </div>
             <div>
-              <p className="text-sm font-medium">Sascha Meier</p>
-              <p className="text-xs text-muted-foreground">sascha@example.com</p>
+              <p className="text-sm font-medium">{user?.name || 'Anonymous'}</p>
+              <p className="text-xs text-muted-foreground">{user?.email || 'anonymous@example.com'}</p>
             </div>
           </div>
           <div className="flex space-x-2">
