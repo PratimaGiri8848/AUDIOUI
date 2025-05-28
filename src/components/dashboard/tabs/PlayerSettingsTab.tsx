@@ -3,8 +3,10 @@ import { Switch } from '../../ui/Switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/Select';
 import { Slider } from '../../ui/Slider';
 import { Card, CardContent } from '../../ui/Card';
-import { Info, AlertTriangle, Play, Rewind, FastForward, Volume2 } from 'lucide-react';
+import { Info, AlertTriangle, Play, Rewind, FastForward, Volume2, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Button } from '../../ui/Button';
+import { useAuthStore } from '../../../lib/store';
 
 interface SettingRowProps {
   label: string;
@@ -92,180 +94,60 @@ const ColorPicker: React.FC<{ label: string; value: string; onChange: (value: st
 };
 
 const PlayerSettingsTab: React.FC = () => {
-  // General settings
-  const [sessionization, setSessionization] = useState(false);
-  const [autoconvert, setAutoconvert] = useState(true);
+  const { settings, updateSettings } = useAuthStore();
+  const [isSaving, setIsSaving] = useState(false);
   
-  // Voice settings
-  const [autoselectVoice, setAutoselectVoice] = useState(true);
-  const [voiceProvider, setVoiceProvider] = useState("11Labs");
-  const [language, setLanguage] = useState("English");
-  const [gender, setGender] = useState("Male");
-  const [defaultVoice, setDefaultVoice] = useState("Rachel");
-  const [defaultModel, setDefaultModel] = useState("Eleven Multilingual v2");
+  // Initialize state from settings
+  const [smallPlayer, setSmallPlayer] = useState(settings.player.smallPlayer);
+  const [volumeControl, setVolumeControl] = useState(settings.player.volumeControl);
+  const [rewindForward, setRewindForward] = useState(settings.player.rewindForward);
+  const [speedControl, setSpeedControl] = useState(settings.player.speedControl);
+  const [textColor, setTextColor] = useState(settings.player.textColor);
+  const [bgColor, setBgColor] = useState(settings.player.bgColor);
   
-  // Text and Image settings
-  const [showTitle, setShowTitle] = useState(true);
-  const [title, setTitle] = useState("Audio by ElevenLabs");
-  const [showAuthor, setShowAuthor] = useState(true);
-  const [author, setAuthor] = useState("Sascha Meier");
-  const [imageUrl, setImageUrl] = useState("");
-  
-  // Appearance settings
-  const [smallPlayer, setSmallPlayer] = useState(true);
-  const [volumeControl, setVolumeControl] = useState(true);
-  const [rewindForward, setRewindForward] = useState(true);
-  const [speedControl, setSpeedControl] = useState(true);
-  const [textColor, setTextColor] = useState("#2134c2ff");
-  const [bgColor, setBgColor] = useState("#000000ff");
-  
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateSettings({
+        player: {
+          smallPlayer,
+          volumeControl,
+          rewindForward,
+          speedControl,
+          textColor,
+          bgColor,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Audio player state
   const [isPlaying, setIsPlaying] = useState(false);
   const progress = 30; // Example progress percentage
 
   return (
     <div className="space-y-4">
-      <Section title="General">
-        <SettingRow label="Sessionization" hasInfo>
-          <Switch checked={sessionization} onCheckedChange={setSessionization} />
-        </SettingRow>
-        <SettingRow label="Autoconvert project to audio" hasInfo>
-          <Switch checked={autoconvert} onCheckedChange={setAutoconvert} />
-        </SettingRow>
-      </Section>
-      
-      <Section title="Voice">
-        <SettingRow label="Autoselect authors voice" hasInfo>
-          <Switch checked={autoselectVoice} onCheckedChange={setAutoselectVoice} />
-        </SettingRow>
-        
-        <SettingRow label="Voice Provider" hasInfo>
-          <Select value={voiceProvider} onValueChange={setVoiceProvider}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select provider" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="11Labs">11Labs</SelectItem>
-              <SelectItem value="OpenAI">OpenAI</SelectItem>
-              <SelectItem value="PlayHT">PlayHT</SelectItem>
-              <SelectItem value="Google">Google</SelectItem>
-            </SelectContent>
-          </Select>
-        </SettingRow>
-        
-        <SettingRow label="Language" hasInfo>
-          <Select value={language} onValueChange={setLanguage}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select language" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="English">English</SelectItem>
-              <SelectItem value="French">French</SelectItem>
-              <SelectItem value="Spanish">Spanish</SelectItem>
-              <SelectItem value="German">German</SelectItem>
-              <SelectItem value="Chinese">Chinese</SelectItem>
-              <SelectItem value="Japanese">Japanese</SelectItem>
-            </SelectContent>
-          </Select>
-        </SettingRow>
-        
-        <SettingRow label="Gender" hasInfo>
-          <Select value={gender} onValueChange={setGender}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select gender" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Male">Male</SelectItem>
-              <SelectItem value="Female">Female</SelectItem>
-              <SelectItem value="Robot">Robot</SelectItem>
-              <SelectItem value="Other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-        </SettingRow>
-        
-        <SettingRow label="Default Voice" hasInfo>
-          <Select value={defaultVoice} onValueChange={setDefaultVoice}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select voice" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Rachel">Rachel</SelectItem>
-              <SelectItem value="John">John</SelectItem>
-              <SelectItem value="Sarah">Sarah</SelectItem>
-              <SelectItem value="Michael">Michael</SelectItem>
-              <SelectItem value="Emma">Emma</SelectItem>
-              <SelectItem value="David">David</SelectItem>
-            </SelectContent>
-          </Select>
-        </SettingRow>
-        
-        <SettingRow label="Default Model">
-          <Select value={defaultModel} onValueChange={setDefaultModel}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select model" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Eleven Multilingual v1">Eleven Multilingual v1</SelectItem>
-              <SelectItem value="Eleven Multilingual v2">Eleven Multilingual v2</SelectItem>
-              <SelectItem value="Eleven Turbo v2">Eleven Turbo v2</SelectItem>
-              <SelectItem value="Eleven Flash v2">Eleven Flash v2</SelectItem>
-            </SelectContent>
-          </Select>
-        </SettingRow>
-        
-        <div className="flex items-start p-4 mt-3 mb-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800 text-sm">
-          <AlertTriangle className="text-yellow-600 dark:text-yellow-500 mr-3 mt-0.5 flex-shrink-0" size={16} />
-          <div className="text-yellow-800 dark:text-yellow-400">
-            We recommend switching to the <strong>Eleven Multilingual v2</strong> model to get the best possible quality for this voice.
-          </div>
-        </div>
-      </Section>
-      
-      <Section title="Text and Image">
-        <SettingRow label="Show Title" hasInfo>
-          <Switch checked={showTitle} onCheckedChange={setShowTitle} />
-        </SettingRow>
-        
-        {showTitle && (
-          <div className="mb-4">
-            <label className="block text-sm text-muted-foreground mb-1">Title</label>
-            <input 
-              type="text" 
-              className="input w-full"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
-        )}
-        
-        <SettingRow label="Show Author" hasInfo>
-          <Switch checked={showAuthor} onCheckedChange={setShowAuthor} />
-        </SettingRow>
-        
-        {showAuthor && (
-          <div className="mb-4">
-            <label className="block text-sm text-muted-foreground mb-1">Author</label>
-            <input 
-              type="text" 
-              className="input w-full"
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-            />
-          </div>
-        )}
-        
-        <div className="mb-4">
-          <label className="block text-sm text-muted-foreground mb-1">Image URL</label>
-          <input 
-            type="text" 
-            className="input w-full"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="https://example.com/image.jpg"
-          />
-        </div>
-      </Section>
-      
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-medium">Player Settings</h2>
+        <Button 
+          onClick={handleSave} 
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save Changes'
+          )}
+        </Button>
+      </div>
+
       <Section title="Appearance">
         <SettingRow label="Small Player">
           <Switch checked={smallPlayer} onCheckedChange={setSmallPlayer} />
@@ -314,7 +196,7 @@ const PlayerSettingsTab: React.FC = () => {
               
               <div className="flex-1">
                 <div className="text-sm mb-1">
-                  {title} ~ {author}
+                  Audio by ElevenLabs ~ Sascha Meier
                 </div>
                 
                 <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
