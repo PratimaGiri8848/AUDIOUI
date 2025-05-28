@@ -76,7 +76,7 @@ const defaultSettings: Settings = {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       settings: defaultSettings,
@@ -158,6 +158,7 @@ export const useAuthStore = create<AuthState>()(
           ...newSettings,
         };
 
+        // Update Supabase
         const { error } = await supabase
           .from('user_settings')
           .upsert({
@@ -169,6 +170,7 @@ export const useAuthStore = create<AuthState>()(
           throw new Error('Failed to save settings');
         }
 
+        // Update local state
         set({ settings: updatedSettings });
       },
     }),
