@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from './supabase';
+import { isValidUUID } from './utils';
 
 interface User {
   id: string;
@@ -182,7 +183,16 @@ export const useAuthStore = create<AuthState>()(
 
       updateSettings: async (newSettings: Partial<Settings>) => {
         const state = get();
-        if (!state.user) return;
+        if (!state.user) {
+          console.error('No user found in state');
+          throw new Error('User not authenticated');
+        }
+
+        if (!isValidUUID(state.user.id)) {
+          console.error('Invalid user ID detected');
+          await get().signOut();
+          throw new Error('Invalid session detected. Please sign in again.');
+        }
 
         const updates = [];
 
