@@ -4,8 +4,7 @@ import { cn } from '../../lib/utils';
 import { useTheme } from '../../hooks/useTheme';
 import { 
   Settings, History, Globe, Music, 
-  LogOut, User, Sun, Moon, X,
-  LayoutDashboard
+  LogOut, User, Sun, Moon, X
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -42,14 +41,10 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
 
-  const currentTab = new URLSearchParams(location.search).get('tab') || 'dashboard';
+  const currentTab = new URLSearchParams(location.search).get('tab') || 'general';
 
   const handleNavigation = (tab: string) => {
-    if (tab === 'dashboard') {
-      navigate('/dashboard');
-    } else {
-      navigate(`/dashboard?tab=${tab}`);
-    }
+    navigate(`/dashboard?tab=${tab}`);
     onClose();
   };
 
@@ -59,7 +54,6 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   };
 
   const navigationItems = [
-    { icon: <LayoutDashboard size={18} />, label: 'Dashboard', tab: 'dashboard' },
     { icon: <Settings size={18} />, label: 'General', tab: 'general' },
     { icon: <Globe size={18} />, label: 'My Websites', tab: 'websites' },
     { icon: <Music size={18} />, label: 'Audio Player Settings', tab: 'player' },
