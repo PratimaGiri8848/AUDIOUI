@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Copy, Play, Trash2, 
   Search, ChevronDown, ChevronUp,
-  Upload, ExternalLink 
+  Upload, ExternalLink, Loader2
 } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { formatDate, truncateText } from '../../../lib/utils';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface HistoryItem {
   id: number;
@@ -21,107 +21,126 @@ interface HistoryItem {
   listens: number;
 }
 
-const mockHistoryData: HistoryItem[] = [
-  {
-    id: 1,
-    voice: { name: 'Prasanna', code: 'NP' },
-    text: 'अनुमानका कमामा भौतिक संरचनाहरू जीवी हुनका साथै प्रदेशहरू जाँ नेपालमा केन्द्रका प्रदेश दरिष्ट उत्पादक सुधार सिंह राठौरको कणालीतिक रहेको सुनाउ । पुराना संरचना भौतिकरहेका छन्, जातिमा भएका अनुसधान कानुनमन्त्री सिसिलले लखता संरचनालाई तत्काल मर्मत गरिने वचन दिएु ।',
-    pageUrl: 'https://example.com/page1',
-    audioUrl: 'https://audio.example.com/audio1.mp3',
-    createdDate: '2025-05-28',
-    listens: 142
-  },
-  {
-    id: 2,
-    voice: { name: 'Rija', code: 'NP' },
-    text: 'कणालीमा प्रदेशमा पूर्व कानुन मन्त्री दिपकबहादुर शाही संघ र प्रदेशले साझा प्रदेशमा स्थानीय कार्यालै बनाएका बताउँदै । हाल बाहिरमा रहेर सरकार निर्माणका लागि उमगा अधार लगायतका कारण कणालीमा हुनुपर्ने निर्मित',
-    pageUrl: 'https://example.com/page2',
-    audioUrl: 'https://audio.example.com/audio2.mp3',
-    createdDate: '2025-05-27',
-    listens: 89
-  },
-  {
-    id: 3,
-    voice: { name: 'Rija', code: 'NP' },
-    text: 'यसैगरि कणालीका लागि भनिएका र दटा तालिम प्राप्त कुकुर भने अहिले दटा कुकुर त्यसपछ खानिने संरक्षणलाई व्यवस्थापन गर्ने प्रयास गरिएका फिभाग कणालीसँग भएका छ । जसले गर्दा अनुसार अनुसन्धानमा दिइएर हुने गरे १५ देखि २० दिनमा जाहिने चाहिन्छ । साँझी अनुसारको जगाको संरचना निष्कर्षण प्रदेश कार्यालय पनि नेपालगञ्जबाट सञ्चालित छन् ।',
-    pageUrl: 'https://example.com/page3',
-    audioUrl: 'https://audio.example.com/audio3.mp3',
-    createdDate: '2025-05-26',
-    listens: 56
-  },
-  {
-    id: 4,
-    voice: { name: 'Rija', code: 'NP' },
-    text: 'प्रदेश प्रदेश मातहतमा रहने प्रदेश तालिम केन्द्र, दुर्गा निष्कर्षण प्रदेश का कणालीमा स्थानीय सहकारीदेखि छैन । पूर्वाधारको अभाव देखाउँदै तालिम ।',
-    pageUrl: 'https://example.com/page4',
-    audioUrl: 'https://audio.example.com/audio4.mp3',
-    createdDate: '2025-05-25',
-    listens: 23
-  }
-];
+// Simulate fetching data from an API
+const fetchHistoryData = async (page: number, limit: number = 20): Promise<HistoryItem[]> => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  const startId = (page - 1) * limit + 1;
+  return Array.from({ length: limit }, (_, index) => ({
+    id: startId + index,
+    voice: { 
+      name: Math.random() > 0.5 ? 'Prasanna' : 'Rija', 
+      code: 'NP' 
+    },
+    text: `Sample text for history item ${startId + index}. This is a longer piece of text that demonstrates how the content will be displayed in the table.`,
+    pageUrl: `https://example.com/page${startId + index}`,
+    audioUrl: `https://audio.example.com/audio${startId + index}.mp3`,
+    createdDate: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
+    listens: Math.floor(Math.random() * 200)
+  }));
+};
 
 const HistoryTab: React.FC = () => {
-  const [historyData, setHistoryData] = useState<HistoryItem[]>(mockHistoryData);
+  const [historyData, setHistoryData] = useState<HistoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<{field: keyof HistoryItem | null, direction: 'asc' | 'desc'}>({
     field: 'createdDate',
     direction: 'desc'
   });
   
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const observer = useRef<IntersectionObserver>();
+  const loadingRef = useRef<HTMLDivElement>(null);
+
+  const loadMoreData = useCallback(async () => {
+    if (loading || !hasMore) return;
+    
+    setLoading(true);
+    try {
+      const newData = await fetchHistoryData(page);
+      if (newData.length === 0) {
+        setHasMore(false);
+      } else {
+        setHistoryData(prev => [...prev, ...newData]);
+        setPage(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error loading history data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, loading, hasMore]);
+
+  useEffect(() => {
+    if (!loadingRef.current) return;
+
+    observer.current = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMoreData();
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    observer.current.observe(loadingRef.current);
+
+    return () => {
+      if (observer.current) {
+        observer.current.disconnect();
+      }
+    };
+  }, [loadMoreData, hasMore]);
+
+  useEffect(() => {
+    loadMoreData();
+  }, []);
+  
   const handleDelete = (id: number) => {
     if (confirm('Are you sure you want to delete this item?')) {
-      setHistoryData(historyData.filter(item => item.id !== id));
+      setHistoryData(prev => prev.filter(item => item.id !== id));
     }
   };
   
   const handleUpload = (id: number, file: File) => {
     console.log(`Uploading file ${file.name} for item ${id}`);
-    // Implement upload logic here
   };
   
   const handlePlayAudio = (url: string) => {
     console.log(`Playing audio from ${url}`);
-    // Implement audio playback logic here
   };
   
   const sortData = (field: keyof HistoryItem) => {
     const newDirection = sortBy.field === field && sortBy.direction === 'asc' ? 'desc' : 'asc';
     setSortBy({ field, direction: newDirection });
-  };
-  
-  const getSortedData = () => {
-    if (!sortBy.field) return historyData;
     
-    return [...historyData].sort((a, b) => {
-      if (sortBy.field === 'listens') {
+    const sortedData = [...historyData].sort((a, b) => {
+      if (field === 'listens') {
         return sortBy.direction === 'asc' 
           ? a.listens - b.listens 
           : b.listens - a.listens;
-      } else if (sortBy.field === 'createdDate') {
+      } else if (field === 'createdDate') {
         return sortBy.direction === 'asc'
           ? new Date(a.createdDate).getTime() - new Date(b.createdDate).getTime()
           : new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime();
-      } else {
-        const aValue = a[sortBy.field];
-        const bValue = b[sortBy.field];
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          return sortBy.direction === 'asc'
-            ? aValue.localeCompare(bValue)
-            : bValue.localeCompare(aValue);
-        }
-        return 0;
       }
+      return 0;
     });
+    
+    setHistoryData(sortedData);
   };
-  
-  const filteredData = getSortedData().filter(item => 
+
+  const filteredData = historyData.filter(item => 
     item.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.voice.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.pageUrl.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const SortIcon = ({ field }: { field: keyof HistoryItem }) => {
-    if (sortBy.field !== field) return <ChevronDown className="opacity-30\" size={14} />;
+    if (sortBy.field !== field) return <ChevronDown className="opacity-30" size={14} />;
     return sortBy.direction === 'asc' 
       ? <ChevronUp size={14} /> 
       : <ChevronDown size={14} />;
@@ -180,10 +199,14 @@ const HistoryTab: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredData.length > 0 ? (
-                filteredData.map((item, index) => (
-                  <tr 
-                    key={item.id} 
+              <AnimatePresence>
+                {filteredData.map((item, index) => (
+                  <motion.tr 
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.2 }}
                     className="border-b border-border hover:bg-muted/20 transition-colors"
                   >
                     <td className="px-4 py-3 text-sm font-medium">{index + 1}</td>
@@ -254,17 +277,19 @@ const HistoryTab: React.FC = () => {
                         </button>
                       </div>
                     </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                    No records found
-                  </td>
-                </tr>
-              )}
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
             </tbody>
           </table>
+          
+          {loading && (
+            <div className="flex justify-center items-center p-4">
+              <Loader2 className="animate-spin" size={24} />
+            </div>
+          )}
+          
+          <div ref={loadingRef} style={{ height: '20px' }} />
         </div>
       </div>
     </div>
