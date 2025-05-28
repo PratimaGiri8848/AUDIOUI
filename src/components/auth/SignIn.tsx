@@ -21,7 +21,7 @@ const SignIn = () => {
       await signIn(email, password);
       navigate('/dashboard?tab=general');
     } catch (err) {
-      setError('Invalid email or password');
+      setError(err instanceof Error ? err.message : 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }

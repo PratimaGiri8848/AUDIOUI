@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from './supabase';
 
 interface User {
   id: string;
@@ -12,7 +13,7 @@ interface AuthState {
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -22,35 +23,61 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       signIn: async (email: string, password: string) => {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // For demo purposes, accept any email/password combination
-        set({
-          user: {
-            id: '1',
-            email,
-            name: email.split('@')[0],
-          },
-          isAuthenticated: true,
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
         });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (data.user) {
+          set({
+            user: {
+              id: data.user.id,
+              email: data.user.email!,
+              name: data.user.user_metadata.name || email.split('@')[0],
+            },
+            isAuthenticated: true,
+          });
+        }
       },
 
       signUp: async (email: string, password: string, name: string) => {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        set({
-          user: {
-            id: '1',
-            email,
-            name,
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name,
+            },
           },
-          isAuthenticated: true,
         });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (data.user) {
+          set({
+            user: {
+              id: data.user.id,
+              email: data.user.email!,
+              name: name,
+            },
+            isAuthenticated: true,
+          });
+        }
       },
 
-      signOut: () => {
+      signOut: async () => {
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          throw new Error(error.message);
+        }
+
         set({ user: null, isAuthenticated: false });
       },
     }),

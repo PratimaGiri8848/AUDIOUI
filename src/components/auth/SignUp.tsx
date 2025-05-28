@@ -28,7 +28,7 @@ const SignUp = () => {
       await signUp(email, password, name);
       navigate('/dashboard?tab=general');
     } catch (err) {
-      setError('Failed to create account');
+      setError(err instanceof Error ? err.message : 'Failed to create account');
     } finally {
       setIsLoading(false);
     }
