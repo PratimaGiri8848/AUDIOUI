@@ -140,7 +140,7 @@ const HistoryTab: React.FC = () => {
   );
 
   const SortIcon = ({ field }: { field: keyof HistoryItem }) => {
-    if (sortBy.field !== field) return <ChevronDown className="opacity-30" size={14} />;
+    if (sortBy.field !== field) return <ChevronDown className="opacity-30\" size={14} />;
     return sortBy.direction === 'asc' 
       ? <ChevronUp size={14} /> 
       : <ChevronDown size={14} />;
