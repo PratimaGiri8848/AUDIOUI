@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/Card';
 import { useAuthStore } from '../../lib/store';
+import { Loader2 } from 'lucide-react';
 
 const SignIn = () => {
   const [email, setEmail] = useState('');
@@ -67,7 +68,14 @@ const SignIn = () => {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign in'
+              )}
             </Button>
           </form>
         </CardContent>

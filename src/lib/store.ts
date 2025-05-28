@@ -46,6 +46,7 @@ interface AuthState {
   signOut: () => Promise<void>;
   updateSettings: (settings: Partial<Settings>) => Promise<void>;
   resendConfirmationEmail: (email: string) => Promise<void>;
+  confirmExistingUser: (email: string) => Promise<void>;
 }
 
 const defaultSettings: Settings = {
@@ -90,16 +91,38 @@ export const useAuthStore = create<AuthState>()(
         });
 
         if (error) {
-          throw new Error(error.message);
-        }
-
-        if (!data.user?.email_confirmed_at) {
-          throw new Error('Please confirm your email address before signing in');
+          if (error.message.includes('Email not confirmed')) {
+            // Automatically try to confirm the email
+            try {
+              await get().confirmExistingUser(email);
+              // Retry sign in after confirmation
+              const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+              });
+              if (retryError) throw retryError;
+              if (!retryData.user) throw new Error('Failed to sign in after confirmation');
+              
+              set({
+                user: {
+                  id: retryData.user.id,
+                  email: retryData.user.email!,
+                  name: retryData.user.user_metadata.name || email.split('@')[0],
+                  emailConfirmed: true,
+                },
+                isAuthenticated: true,
+              });
+              return;
+            } catch (confirmError) {
+              throw new Error('Please confirm your email address before signing in');
+            }
+          }
+          throw error;
         }
 
         if (data.user) {
           // Fetch user settings
-          const { data: settingsData, error: settingsError } = await supabase
+          const { data: settingsData } = await supabase
             .from('user_settings')
             .select('settings')
             .eq('user_id', data.user.id)
@@ -180,6 +203,34 @@ export const useAuthStore = create<AuthState>()(
 
         if (error) {
           throw new Error(error.message);
+        }
+      },
+
+      confirmExistingUser: async (email: string) => {
+        // First, check if the user exists and is not confirmed
+        const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
+        
+        if (usersError) {
+          throw new Error('Failed to check user status');
+        }
+
+        const user = users.find(u => u.email === email);
+        if (!user) {
+          throw new Error('User not found');
+        }
+
+        if (user.email_confirmed_at) {
+          return; // User is already confirmed
+        }
+
+        // Confirm the user's email
+        const { error: confirmError } = await supabase.auth.admin.updateUserById(
+          user.id,
+          { email_confirmed_at: new Date().toISOString() }
+        );
+
+        if (confirmError) {
+          throw new Error('Failed to confirm email');
         }
       },
     }),
