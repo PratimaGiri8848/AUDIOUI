@@ -99,35 +99,46 @@ export const useAuthStore = create<AuthState>()(
         if (error) throw error;
 
         if (data.user) {
-          // Fetch all settings in parallel
-          const [
-            { data: generalData },
-            { data: voiceData },
-            { data: playerData },
-            { data: websiteData }
-          ] = await Promise.all([
-            supabase.from('general_settings').select('*').eq('user_id', data.user.id).single(),
-            supabase.from('voice_settings').select('*').eq('user_id', data.user.id).single(),
-            supabase.from('player_settings').select('*').eq('user_id', data.user.id).single(),
-            supabase.from('website_settings').select('*').eq('user_id', data.user.id).single(),
-          ]);
+          try {
+            // Fetch all settings in parallel
+            const [
+              { data: generalData, error: generalError },
+              { data: voiceData, error: voiceError },
+              { data: playerData, error: playerError },
+              { data: websiteData, error: websiteError }
+            ] = await Promise.all([
+              supabase.from('general_settings').select('*').eq('user_id', data.user.id).single(),
+              supabase.from('voice_settings').select('*').eq('user_id', data.user.id).single(),
+              supabase.from('player_settings').select('*').eq('user_id', data.user.id).single(),
+              supabase.from('website_settings').select('*').eq('user_id', data.user.id).single(),
+            ]);
 
-          const settings: Settings = {
-            general: generalData || defaultSettings.general,
-            voice: voiceData || defaultSettings.voice,
-            player: playerData || defaultSettings.player,
-            websites: websiteData || defaultSettings.websites,
-          };
+            // Check for errors
+            if (generalError) console.error('Error fetching general settings:', generalError);
+            if (voiceError) console.error('Error fetching voice settings:', voiceError);
+            if (playerError) console.error('Error fetching player settings:', playerError);
+            if (websiteError) console.error('Error fetching website settings:', websiteError);
 
-          set({
-            user: {
-              id: data.user.id,
-              email: data.user.email!,
-              name: data.user.user_metadata.name || email.split('@')[0],
-            },
-            isAuthenticated: true,
-            settings,
-          });
+            const settings: Settings = {
+              general: generalData || defaultSettings.general,
+              voice: voiceData || defaultSettings.voice,
+              player: playerData || defaultSettings.player,
+              websites: websiteData || defaultSettings.websites,
+            };
+
+            set({
+              user: {
+                id: data.user.id,
+                email: data.user.email!,
+                name: data.user.user_metadata.name || email.split('@')[0],
+              },
+              isAuthenticated: true,
+              settings,
+            });
+          } catch (error) {
+            console.error('Error fetching settings:', error);
+            throw new Error('Failed to fetch user settings');
+          }
         }
       },
 
@@ -143,35 +154,47 @@ export const useAuthStore = create<AuthState>()(
         if (error) throw error;
 
         if (data.user) {
-          // Insert default settings for new user
-          await Promise.all([
-            supabase.from('general_settings').insert({
-              user_id: data.user.id,
-              ...defaultSettings.general,
-            }),
-            supabase.from('voice_settings').insert({
-              user_id: data.user.id,
-              ...defaultSettings.voice,
-            }),
-            supabase.from('player_settings').insert({
-              user_id: data.user.id,
-              ...defaultSettings.player,
-            }),
-            supabase.from('website_settings').insert({
-              user_id: data.user.id,
-              ...defaultSettings.websites,
-            }),
-          ]);
+          try {
+            // Insert default settings for new user
+            const results = await Promise.all([
+              supabase.from('general_settings').insert({
+                user_id: data.user.id,
+                ...defaultSettings.general,
+              }),
+              supabase.from('voice_settings').insert({
+                user_id: data.user.id,
+                ...defaultSettings.voice,
+              }),
+              supabase.from('player_settings').insert({
+                user_id: data.user.id,
+                ...defaultSettings.player,
+              }),
+              supabase.from('website_settings').insert({
+                user_id: data.user.id,
+                ...defaultSettings.websites,
+              }),
+            ]);
 
-          set({
-            user: {
-              id: data.user.id,
-              email: data.user.email!,
-              name: data.user.user_metadata.name || email.split('@')[0],
-            },
-            isAuthenticated: true,
-            settings: defaultSettings,
-          });
+            // Check for errors in results
+            results.forEach((result, index) => {
+              if (result.error) {
+                console.error(`Error inserting settings for table ${index}:`, result.error);
+              }
+            });
+
+            set({
+              user: {
+                id: data.user.id,
+                email: data.user.email!,
+                name: data.user.user_metadata.name || email.split('@')[0],
+              },
+              isAuthenticated: true,
+              settings: defaultSettings,
+            });
+          } catch (error) {
+            console.error('Error creating user settings:', error);
+            throw new Error('Failed to create user settings');
+          }
         }
       },
 
@@ -196,40 +219,64 @@ export const useAuthStore = create<AuthState>()(
 
         const updates = [];
 
-        if (newSettings.general) {
-          updates.push(
-            supabase
-              .from('general_settings')
-              .upsert({ user_id: state.user.id, ...newSettings.general })
-          );
-        }
-
-        if (newSettings.voice) {
-          updates.push(
-            supabase
-              .from('voice_settings')
-              .upsert({ user_id: state.user.id, ...newSettings.voice })
-          );
-        }
-
-        if (newSettings.player) {
-          updates.push(
-            supabase
-              .from('player_settings')
-              .upsert({ user_id: state.user.id, ...newSettings.player })
-          );
-        }
-
-        if (newSettings.websites) {
-          updates.push(
-            supabase
-              .from('website_settings')
-              .upsert({ user_id: state.user.id, ...newSettings.websites })
-          );
-        }
-
         try {
-          await Promise.all(updates);
+          if (newSettings.general) {
+            const { error } = await supabase
+              .from('general_settings')
+              .upsert({ 
+                user_id: state.user.id, 
+                ...newSettings.general 
+              });
+            
+            if (error) {
+              console.error('Error updating general settings:', error);
+              throw error;
+            }
+          }
+
+          if (newSettings.voice) {
+            const { error } = await supabase
+              .from('voice_settings')
+              .upsert({ 
+                user_id: state.user.id, 
+                ...newSettings.voice 
+              });
+            
+            if (error) {
+              console.error('Error updating voice settings:', error);
+              throw error;
+            }
+          }
+
+          if (newSettings.player) {
+            const { error } = await supabase
+              .from('player_settings')
+              .upsert({ 
+                user_id: state.user.id, 
+                ...newSettings.player 
+              });
+            
+            if (error) {
+              console.error('Error updating player settings:', error);
+              throw error;
+            }
+          }
+
+          if (newSettings.websites) {
+            const { error } = await supabase
+              .from('website_settings')
+              .upsert({ 
+                user_id: state.user.id, 
+                ...newSettings.websites 
+              });
+            
+            if (error) {
+              console.error('Error updating website settings:', error);
+              throw error;
+            }
+          }
+
+          // Update local state if all database operations succeeded
           set({
             settings: {
               ...state.settings,
