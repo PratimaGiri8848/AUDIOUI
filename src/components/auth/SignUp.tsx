@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/Card';
-import { Github, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { useAuthStore } from '../../lib/store';
 
 const SignUp = () => {
@@ -13,7 +13,7 @@ const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const signUp = useAuthStore((state) => state.signUp);
+  const { signUp, signInWithGoogle } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +35,20 @@ const SignUp = () => {
     }
   };
 
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await signInWithGoogle();
+      navigate('/dashboard?tab=general');
+    } catch (err) {
+      setError('Google sign up failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -43,13 +57,14 @@ const SignUp = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-4">
-            <Button variant="outline" className="w-full" onClick={() => console.log('Google sign up')}>
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={handleGoogleSignUp}
+              disabled={isLoading}
+            >
               <Mail className="mr-2 h-4 w-4" />
               Sign up with Google
-            </Button>
-            <Button variant="outline" className="w-full" onClick={() => console.log('GitHub sign up')}>
-              <Github className="mr-2 h-4 w-4" />
-              Sign up with GitHub
             </Button>
           </div>
           <div className="relative">

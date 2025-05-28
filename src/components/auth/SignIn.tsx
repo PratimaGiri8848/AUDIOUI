@@ -11,7 +11,7 @@ const SignIn = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const signIn = useAuthStore((state) => state.signIn);
+  const { signIn, signInWithGoogle } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +28,20 @@ const SignIn = () => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await signInWithGoogle();
+      navigate('/dashboard?tab=general');
+    } catch (err) {
+      setError('Google sign in failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -36,13 +50,14 @@ const SignIn = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-4">
-            <Button variant="outline" className="w-full" onClick={() => console.log('Google sign in')}>
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+            >
               <Mail className="mr-2 h-4 w-4" />
               Continue with Google
-            </Button>
-            <Button variant="outline" className="w-full" onClick={() => console.log('GitHub sign in')}>
-              <Github className="mr-2 h-4 w-4" />
-              Continue with GitHub
             </Button>
           </div>
           <div className="relative">
