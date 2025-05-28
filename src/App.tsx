@@ -22,7 +22,7 @@ function App() {
           
           {/* Protected Routes */}
           <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate to="/dashboard?tab=general" replace />} />
+            <Route index element={<Navigate to="/dashboard?tab=general\" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="profile" element={<Profile />} />
           </Route>
