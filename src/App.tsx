@@ -21,19 +21,19 @@ function App() {
           <Route
             path="/signin"
             element={
-              isAuthenticated ? <Navigate to="/dashboard?tab=general" replace /> : <SignIn />
+              isAuthenticated ? <Navigate to="/dashboard?tab=general\" replace /> : <SignIn />
             }
           />
           <Route
             path="/signup"
             element={
-              isAuthenticated ? <Navigate to="/dashboard?tab=general" replace /> : <SignUp />
+              isAuthenticated ? <Navigate to="/dashboard?tab=general\" replace /> : <SignUp />
             }
           />
           <Route
             path="/forgot-password"
             element={
-              isAuthenticated ? <Navigate to="/dashboard?tab=general" replace /> : <ForgotPassword />
+              isAuthenticated ? <Navigate to="/dashboard?tab=general\" replace /> : <ForgotPassword />
             }
           />
           
@@ -41,10 +41,10 @@ function App() {
           <Route
             path="/"
             element={
-              isAuthenticated ? <Layout /> : <Navigate to="/signin" replace />
+              isAuthenticated ? <Layout /> : <Navigate to="/signin\" replace />
             }
           >
-            <Route index element={<Navigate to="/dashboard?tab=general" replace />} />
+            <Route index element={<Navigate to="/dashboard?tab=general\" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="profile" element={<Profile />} />
           </Route>
