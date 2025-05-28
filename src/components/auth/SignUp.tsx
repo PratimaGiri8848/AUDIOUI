@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/Card';
-import { Mail } from 'lucide-react';
 import { useAuthStore } from '../../lib/store';
 
 const SignUp = () => {
@@ -13,7 +12,7 @@ const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { signUp, signInWithGoogle } = useAuthStore();
+  const signUp = useAuthStore((state) => state.signUp);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,20 +34,6 @@ const SignUp = () => {
     }
   };
 
-  const handleGoogleSignUp = async () => {
-    setIsLoading(true);
-    setError('');
-
-    try {
-      await signInWithGoogle();
-      navigate('/dashboard?tab=general');
-    } catch (err) {
-      setError('Google sign up failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -56,25 +41,6 @@ const SignUp = () => {
           <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-4">
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={handleGoogleSignUp}
-              disabled={isLoading}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              Sign up with Google
-            </Button>
-          </div>
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-            </div>
-          </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-3 text-sm bg-destructive/10 text-destructive rounded-md">
