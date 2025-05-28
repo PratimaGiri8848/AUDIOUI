@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from '../../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/Card';
-import { X, AlertTriangle, ChevronDown } from 'lucide-react';
+import { X, AlertTriangle, ChevronDown, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { validateUrl } from '../../../lib/utils';
+import { useAuthStore } from '../../../lib/store';
 
 interface TagProps {
   text: string;
@@ -24,9 +25,12 @@ const Tag: React.FC<TagProps> = ({ text, onRemove }) => (
 );
 
 const WebsitesTab: React.FC = () => {
-  const [allowedUrls, setAllowedUrls] = useState<string[]>(["https://elevenlabs.io/blog/"]);
-  const [disallowedWords, setDisallowedWords] = useState<string[]>(["admin", "login"]);
-  const [disallowedUrls, setDisallowedUrls] = useState<string[]>([]);
+  const { settings, updateSettings } = useAuthStore();
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const [allowedUrls, setAllowedUrls] = useState<string[]>(settings.websites.allowedUrls);
+  const [disallowedWords, setDisallowedWords] = useState<string[]>(settings.websites.disallowedWords);
+  const [disallowedUrls, setDisallowedUrls] = useState<string[]>(settings.websites.disallowedUrls);
   
   const [allowedUrlInput, setAllowedUrlInput] = useState("");
   const [disallowedWordInput, setDisallowedWordInput] = useState("");
@@ -35,6 +39,23 @@ const WebsitesTab: React.FC = () => {
   const [testResult, setTestResult] = useState<{ allowed: boolean; message: string } | null>(null);
   
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateSettings({
+        websites: {
+          allowedUrls,
+          disallowedWords,
+          disallowedUrls,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const addAllowedUrl = () => {
     if (allowedUrlInput && validateUrl(allowedUrlInput)) {
@@ -95,6 +116,23 @@ const WebsitesTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-medium">Website Settings</h2>
+        <Button 
+          onClick={handleSave} 
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save Changes'
+          )}
+        </Button>
+      </div>
+
       <section className="mb-6">
         <h3 className="text-lg font-medium mb-2">Allowed URLs</h3>
         <p className="text-sm text-muted-foreground mb-4">
