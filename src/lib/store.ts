@@ -8,32 +8,40 @@ interface User {
   name: string;
 }
 
+interface GeneralSettings {
+  sessionization: boolean;
+  autoconvert: boolean;
+}
+
+interface VoiceSettings {
+  autoselectVoice: boolean;
+  voiceProvider: string;
+  language: string;
+  gender: string;
+  defaultVoice: string;
+  defaultModel: string;
+}
+
+interface PlayerSettings {
+  smallPlayer: boolean;
+  volumeControl: boolean;
+  rewindForward: boolean;
+  speedControl: boolean;
+  textColor: string;
+  bgColor: string;
+}
+
+interface WebsiteSettings {
+  allowedUrls: string[];
+  disallowedWords: string[];
+  disallowedUrls: string[];
+}
+
 interface Settings {
-  general: {
-    sessionization: boolean;
-    autoconvert: boolean;
-  };
-  voice: {
-    autoselectVoice: boolean;
-    voiceProvider: string;
-    language: string;
-    gender: string;
-    defaultVoice: string;
-    defaultModel: string;
-  };
-  player: {
-    smallPlayer: boolean;
-    volumeControl: boolean;
-    rewindForward: boolean;
-    speedControl: boolean;
-    textColor: string;
-    bgColor: string;
-  };
-  websites: {
-    allowedUrls: string[];
-    disallowedWords: string[];
-    disallowedUrls: string[];
-  };
+  general: GeneralSettings;
+  voice: VoiceSettings;
+  player: PlayerSettings;
+  websites: WebsiteSettings;
 }
 
 interface AuthState {
@@ -87,17 +95,28 @@ export const useAuthStore = create<AuthState>()(
           password,
         });
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         if (data.user) {
-          // Fetch user settings
-          const { data: settingsData } = await supabase
-            .from('user_settings')
-            .select('settings')
-            .eq('user_id', data.user.id)
-            .single();
+          // Fetch all settings in parallel
+          const [
+            { data: generalData },
+            { data: voiceData },
+            { data: playerData },
+            { data: websiteData }
+          ] = await Promise.all([
+            supabase.from('general_settings').select('*').eq('user_id', data.user.id).single(),
+            supabase.from('voice_settings').select('*').eq('user_id', data.user.id).single(),
+            supabase.from('player_settings').select('*').eq('user_id', data.user.id).single(),
+            supabase.from('website_settings').select('*').eq('user_id', data.user.id).single(),
+          ]);
+
+          const settings: Settings = {
+            general: generalData || defaultSettings.general,
+            voice: voiceData || defaultSettings.voice,
+            player: playerData || defaultSettings.player,
+            websites: websiteData || defaultSettings.websites,
+          };
 
           set({
             user: {
@@ -106,7 +125,7 @@ export const useAuthStore = create<AuthState>()(
               name: data.user.user_metadata.name || email.split('@')[0],
             },
             isAuthenticated: true,
-            settings: settingsData?.settings || defaultSettings,
+            settings,
           });
         }
       },
@@ -117,16 +136,32 @@ export const useAuthStore = create<AuthState>()(
           password,
           options: {
             data: { name },
-            emailRedirectTo: `${window.location.origin}/signin`,
           },
         });
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         if (data.user) {
-          // Automatically sign in after signup
+          // Insert default settings for new user
+          await Promise.all([
+            supabase.from('general_settings').insert({
+              user_id: data.user.id,
+              ...defaultSettings.general,
+            }),
+            supabase.from('voice_settings').insert({
+              user_id: data.user.id,
+              ...defaultSettings.voice,
+            }),
+            supabase.from('player_settings').insert({
+              user_id: data.user.id,
+              ...defaultSettings.player,
+            }),
+            supabase.from('website_settings').insert({
+              user_id: data.user.id,
+              ...defaultSettings.websites,
+            }),
+          ]);
+
           set({
             user: {
               id: data.user.id,
@@ -141,11 +176,7 @@ export const useAuthStore = create<AuthState>()(
 
       signOut: async () => {
         const { error } = await supabase.auth.signOut();
-        
-        if (error) {
-          throw error;
-        }
-
+        if (error) throw error;
         set({ user: null, isAuthenticated: false, settings: defaultSettings });
       },
 
@@ -153,25 +184,52 @@ export const useAuthStore = create<AuthState>()(
         const state = get();
         if (!state.user) return;
 
-        const updatedSettings = {
-          ...state.settings,
-          ...newSettings,
-        };
+        const updates = [];
 
-        // Update Supabase
-        const { error } = await supabase
-          .from('user_settings')
-          .upsert({
-            user_id: state.user.id,
-            settings: updatedSettings,
-          });
-
-        if (error) {
-          throw new Error('Failed to save settings');
+        if (newSettings.general) {
+          updates.push(
+            supabase
+              .from('general_settings')
+              .upsert({ user_id: state.user.id, ...newSettings.general })
+          );
         }
 
-        // Update local state
-        set({ settings: updatedSettings });
+        if (newSettings.voice) {
+          updates.push(
+            supabase
+              .from('voice_settings')
+              .upsert({ user_id: state.user.id, ...newSettings.voice })
+          );
+        }
+
+        if (newSettings.player) {
+          updates.push(
+            supabase
+              .from('player_settings')
+              .upsert({ user_id: state.user.id, ...newSettings.player })
+          );
+        }
+
+        if (newSettings.websites) {
+          updates.push(
+            supabase
+              .from('website_settings')
+              .upsert({ user_id: state.user.id, ...newSettings.websites })
+          );
+        }
+
+        try {
+          await Promise.all(updates);
+          set({
+            settings: {
+              ...state.settings,
+              ...newSettings,
+            },
+          });
+        } catch (error) {
+          console.error('Failed to update settings:', error);
+          throw new Error('Failed to save settings');
+        }
       },
     }),
     {
